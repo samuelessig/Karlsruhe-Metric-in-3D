@@ -50,8 +50,7 @@ Euclidean Distance      |  Karlsruhe Distance     |  Overlap/Difference
 
 ### Bisector of two points in 3D
 
-TODO add video here with drag and drop
-![Biesector](bisector.mp4)
+https://github.com/user-attachments/assets/f23b959e-8f5c-4d8e-a639-a79429900135
 
 ### Cell boundary of a single Voronoi cell in 3D
 
