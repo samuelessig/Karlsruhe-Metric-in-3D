@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Voronoi Diagrams in 3D</title>
+  <link rel="stylesheet" href="main.css">
+  <link rel="stylesheet" href="temml/Temml-Local.css">
+  <script src="temml/temml.min.js"></script>
+  <script src="main.js"></script>
+  <meta
+    name="description"
+    content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+  />
+  <meta name="author" content="Samuel Essig" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Karlsruhe Metric in 3D" />
+  <meta property="og:title" content="Voronoi Diagrams in 3D with the Karlsruhe Metric" />
+  <meta
+    property="og:description"
+    content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+  />
+  <meta property="og:url" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/" />
+  <meta property="og:image" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/open-graph.png" />
+  <meta property="og:image:width" content="1280" />
+  <meta property="og:image:height" content="640" />
+  <meta property="og:image:alt" content="Voronoi diagrams in 3D using the Karlsruhe metric" />
+  <meta property="og:locale" content="en_US" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Voronoi Diagrams in 3D with the Karlsruhe Metric" />
+  <meta
+    name="twitter:description"
+    content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+  />
+  <meta name="twitter:image" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/open-graph.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="manifest" href="site.webmanifest">
+
+</head>
+
+<body>
+
+    <nav id="toc" aria-label="On this page">
+      <!-- JS fills the links here -->
+      <div id="toc-links"></div>
+    </nav>
+
+  <div class="content">
+    <h1>Voronoi Diagrams in 3D Space with the Karlsruhe Metric</h1>
+
+    <h2>Overview</h2>
+    <p>
+      This project explored Voronoi diagrams in 2D and 3D using the Karlsruhe metric.
+      The focus was using GPU-based techniques, in particular the fragment shader.
+      <br>
+      The project was carried out by Samuel Essig under the supervision of Dr. Susanne Krömker as part of an Advanced Software Practical at Heidelberg University.
+      <br>
+      A web version of the final program can be found <a href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/">here</a>.
+      <br>
+      This practical continues the work from an earlier
+      <a href="https://pille.iwr.uni-heidelberg.de/~voronoi01/">software practical by Sebastian Zins</a>.
+    </p>
+
+    <h2>Motivation</h2>
+    <p>
+      While the Euclidean metric is intuitive and familiar, other distance metrics are harder to grasp. 
+      Voronoi diagrams provide a visual way to understand such metrics.
+      In 2D, Voronoi diagrams are well understood and widely studied, especially with the Euclidean metric.
+      Voronoi diagrams in 3D are less explored, and the combination of 3D Voronoi diagrams with non-Euclidean metrics is an even more niche topic.
+      The goal of this practical was to provide an interactive 3D visualization that allows exploring the properties of the Karlsruhe metric and its Voronoi diagrams.
+    </p>
+
+
+    <h2>Karlsruhe Metric</h2>
+    <p>
+      The Karlsruhe metric is inspired by the layout of the city of Karlsruhe (sometimes it is referred to as the Moscow metric). In case of Karlsruhe, the castle is at the center of the city and it corresponds to the origin.
+      You can travel the city on roads that either radiate outwards from the castle like spokes on a wheel or on roads that form circles around the castle. The Karlsruhe distance function combines these two ways of traveling on radial rays and circular arcs and chooses the shortest combination.
+
+      There are only two possible combinations for the shortest path between two points. Either the path consists of two radial segments through the origin, or it consists of a circular arc and a radial segment.
+      The switch between these two paths happens when the angle between the two points is 2 rad (≈114.6 degrees). This will be explained in more detail <a href="#switch-at-2-radians">below</a>.
+
+      <br>
+      <br>
+      <img
+        id="pathslideshow"
+        src="images/path0.png"
+        style="height:20em;cursor:pointer;"
+        alt="Two paths in the Karlsruhe metric"
+      />
+      <span class="caption">Examples of the two possible types of paths in the Karlsruhe metric</span>
+      <br>
+
+      In 3D, the Karlsruhe metric is similarly defined, but instead of circular arcs we have spherical arcs on spheres centered at the origin.
+      This can be imagined as traveling on the layers of an onion. Imagine two points A and B: Point A is on a sphere centered in the origin and point B is on a smaller sphere. 
+      To travel from A to B, you first go radially inward from point A to the smaller sphere, and then you travel on the surface of the smaller sphere to point B.
+    </p>
+
+    <h2>Calculating the Karlsruhe Metric</h2>
+    <p>
+      The Karlsruhe distance 
+      <math><mrow><msub><mi>d</mi><mi>k</mi></msub><mo form="prefix" stretchy="false">(</mo><msub><mi>P</mi><mn>1</mn></msub><mo separator="true">,</mo><msub><mi>P</mi><mn>2</mn></msub><mo form="postfix" stretchy="false">)</mo></mrow></math>
+      between two points
+      <math><msub><mi>P</mi><mn>1</mn></msub></math>
+      and
+      <math><msub><mi>P</mi><mn>2</mn></msub></math>
+      can be defined as follows:
+      <div class="math">
+        $$
+        d_k (P_1, P_2) = min( \color{NavyBlue} \space min(r_1,r_2)⋅𝛿(P_1,P_2)+|r_1−r_2 | \space\space, \color{Green} \space\space  r_1 + r_2 \color{default} \space)
+        $$
+      </div>
+      <math><mrow><mtext>𝛿</mtext><mo form="prefix" stretchy="false">(</mo><msub><mi>P</mi><mn>1</mn></msub><mo separator="true">,</mo><msub><mi>P</mi><mn>2</mn></msub><mo form="postfix" stretchy="false">)</mo></mrow></math>
+      is the angle between the points with respect to the origin.
+      <br>
+      <math><mrow><msub><mi>r</mi><mn>1</mn></msub></mrow></math>
+      and
+      <math><mrow><msub><mi>r</mi><mn>2</mn></msub></mrow></math>
+      are the distances from the origin to the points.
+<br><br>
+      The path along a radial segment and a circular arc is
+      <div class="math">
+        $$
+        \color{NavyBlue} \space min(r_1,r_2)⋅𝛿(P_1,P_2)+|r_1−r_2 |
+        $$
+      </div>
+
+      <br>
+      The path through the origin is 
+      <div class="math">
+        $$
+        \color{Green} r_1 + r_2
+        $$
+      </div>
+      <br>
+      In 2D, the Karlsruhe distance can easily be calculated by using the polar coordinates of the points.
+      The polar coordinates contain the radius, and the angle 𝛿 is calculated by the absolute difference of the angle-coordinate of the two points.
+      <br>
+      <br>
+      In 3D, the angle δ between two points is computed using the dot product:
+      <div class="math">
+        $$
+        \vec{a} \cdot\ \vec{b}=||\vec{a}|| \space || \vec{b} || \space cos(\delta)
+        $$
+      </div>
+      <div class="math">
+        $$
+        \delta= cos^{-1} \left( \frac{
+
+        \vec{a}\cdot\vec{b}}
+
+        {||\vec{a}|| \space ||\vec{b}||
+
+        }
+        \right)
+        $$
+      </div>
+
+      <br>
+ 
+     The Karlsruhe metric can be extended to higher dimensions as well, but the calculation of the angle between two points becomes more complex with increasing dimensions.
+
+
+      <h3 id="switch-at-2-radians">The switch at 2 radians</h3>
+      The switch between the two path options occurs when the angle 𝛿 between the points is equal to 2 radians (≈114.6 degrees).
+      The two paths are the same length at this angle.
+      <br><br>
+      When 𝛿 < 2, the shortest path consists of a circular arc and a radial segment.
+      <br>
+      When 𝛿 > 2, the shortest path consists of two radial segments through the origin.
+      <br><br>
+      We can write the Karlsruhe distance as a piecewise function with two cases:
+      <div class="math">
+        $$
+      d_k(P_1,P_2)=
+\begin{cases}
+	\textcolor{NavyBlue} {min(r_1,r_2)\cdot𝛿(P_1,P_2)+|r_1−r_2|  \space \textcolor{default}{,\space\space if \space\space 𝛿(P_1,P_2) \le 2}} \\
+	\textcolor{Green}{r_1+r_2}
+\end{cases}
+        $$
+      </div>
+      <br><br>
+
+      This means that the distance function is continuous but not smooth at 2 radians.
+    </p>
+
+    <h2>Voronoi Diagrams</h2>
+    <p>
+      A Voronoi diagram of a set of points is a partitioning of space into regions called Voronoi cells.
+      A cell consists of all locations that are closer to that point than to any other point under a chosen metric.
+      <br>
+      The special case of a set of two points is useful to understand how the Voronoi diagram is constructed.
+      The boundary that separates the space in two regions is called the bisector.
+      In 2D, with the Euclidean metric, the bisector is a straight line equidistant from both points:
+      <br>
+      <img src="images/Mittelsenkr-ab-e.svg" alt="Perpendicular bisector of two points" style="background:white" />
+      <span class="caption">
+        The perpendicular bisector in the Euclidean metric.
+        <span style="font-size:smaller"><a href="https://commons.wikimedia.org/wiki/File:Mittelsenkr-ab-e.svg">Image</a> by <a href="https://commons.wikimedia.org/wiki/User:Ag2gaeh">Ag2gaeh</a> / <a href="https://creativecommons.org/licenses/by-sa/4.0/">CC BY-SA 4.0</a>
+      </span>
+
+
+      </span>
+    <br>
+      In 3D, with the Euclidean metric, the bisector becomes a plane equidistant from both points.
+      <br>
+      <br>
+      To construct the Voronoi diagram in the Euclidean metric, the naive approach is to calculate the bisectors for all pairs of points and then find the intersections of these bisectors.
+      More efficient algorithms can compute Voronoi diagrams in O(n log n), for example the <a href="https://en.wikipedia.org/wiki/Fortune%27s_algorithm">Fortune's algorithm</a> also known as wavefront algorithm.
+    </p>
+
+    <h2>Method</h2>
+    <p>
+      Instead of constructing the Voronoi diagram, a visualization can be created by coloring each pixel according to its closest point.
+      We start with a set of n points in 2D or 3D space and label each point with a unique color.
+      For each pixel on the screen, we calculate the distance from the pixel's position to each point using our distance metric (in this case the Karlsruhe metric).
+      The pixel is then colored with the color of its closest point. For each pixel, n distance calculations are required.
+      This approach is very suitable for rendering using shaders on the GPU. The fragment shader runs for each pixel on the screen and calculates the color of the pixel anyway.
+      In each fragment shader invocation we can calculate the distances to all points, determine the closest point and return its color.
+      Sebastian Zins' <a href="https://pille.iwr.uni-heidelberg.de/~voronoi01/">software practical</a> demonstrated this approach for Voronoi diagrams on the surface of the sphere.
+      His implementation shows that this approach is feasible and allows for interactive exploration. 
+      The number of points is limited by the performance of the GPU, but since this is a visualization, the useful number of points is already limited by human perception.
+    </p>
+    <h2>Implementation</h2>
+    <p>
+      The program was developed in the Unity game engine. The scene contains a single sphere that represents the 3D space. 
+      The points are randomly distributed inside the sphere and can be moved interactively with the mouse.
+      Different fragment shaders are applied to the sphere to visualize the Voronoi diagrams:
+
+      <h3>Sphere surface</h3>
+      A first approach was to restrict the points to the surface of the sphere, similar to Sebastian Zins' implementation.
+      The shader runs for each pixel that corresponds to a location on the sphere surface:
+      <br>
+      <img src="images/karlsruhe_on_surface.png" alt="Voronoi diagram on sphere surface" style="height:300px;" class="zoomable" />
+      <span class="caption">Voronoi diagram of the Karlsruhe metric on the sphere surface</span>
+      <br>
+      The resulting Voronoi diagrams are the same as the <a href="https://en.wikipedia.org/wiki/Great-circle_distance">"great-circle distance"</a> except in cases where the angle between two points is larger than 2 radians.
+      <br>
+      <br>
+      The program of this approach can be found here: <a href="https://github.com/samuelessig/Spherical-Karlsruhe-Metric">Spherical-Karlsruhe-Metric</a>
+      <h3>Onion Layers</h3>
+      The next step was to extend the program for points inside the sphere.
+      If the path of the Karlsruhe distance goes along an arc, the arc has the same radius as the point with the smaller radius.
+      This can be imagined as layers of an onion. Each point creates a layer which is a sphere centered at the origin. 
+      The Karlsruhe path between two points travels on the layer of the point with the smaller radius and then goes radially outward to the other point.
+      The following image shows the path of the Karlsruhe distance on the "onion layer" of the point with the smaller radius. The onion layers are colored according to which point is closer and the red line indicates the bisector:
+      <br>
+      <img src="images/onion_3d.png" alt="Onion layers of Karlsruhe metric for two points" style="height:450px" class="zoomable" />
+      <span class="caption">Onion layers of Karlsruhe metric for two points</span>
+      <br>
+      In the program this shader can be selected in the menu as "Onion Layers".
+      <br>
+      Source code of this shader: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D/blob/main/Assets/Shader/Onion%20Layers.shader">Onion Layers.shader</a>
+      <br>
+      <h3>Cross-Sections</h3>
+      Another approach is to show a cross-section or slice of the sphere that can be moved interactively through the sphere:
+      <br>
+      <img src="images/ani_slices_2points.gif" alt="Animation of a cross-section sliding through the sphere" style="height:400px" class="zoomable" />
+      <span class="caption">Cross-section sliding through the sphere to show the Voronoi diagram of two points</span>
+      <br>
+      <br>
+      The fragment shader is used similarly to the surface approach: instead of calculating the color for each pixel on the sphere surface, the color is calculated for each pixel on the cross-section plane.
+      The position and tilt of the cross-section plane can be controlled interactively with the mouse or keyboard.
+      <br>
+      This makes it possible to use multiple points and multiple cross-sections:
+      <br>
+      <img src="images/two_slices.png" alt="Two perpendicular cross-sections through the sphere" style="height:400px;" class="zoomable" />
+      <span class="caption">Two perpendicular cross-sections through the sphere showing the Voronoi diagram of multiple points</span>
+      <br>
+      Although at first glance this approach looks like it uses meshes for the cross-sections, it is only a fragment shader.
+      The main challenge of this approach is to correctly blend the colors of multiple cross-sections. Because the slices are not 3D meshes, the shader cannot rely on the depth buffer/z buffer for ordering.
+      Instead, the shader calculates a color value for each cross-section and then sorts the colors by distance from the camera. Then the colors are blended from back to front to achieve the correct transparency effects.
+      <br>
+      <br>
+      In the program this shader can be selected in the menu as "Slices".
+      <br>
+      Source code of this shader: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D/blob/main/Assets/Shader/Slices.shader">Slices.shader</a>
+      <br>
+      <br>
+      A 2D version of this shader can be selected in the program as "2D on circle". The 2D version puts all the points on the same plane (y=0) and then uses the y=0 plane as the cross-section.
+      
+      <table>
+          <tr>
+            <td style="text-align:center;">
+              <img src="images/2d_euclidean.png" alt="Euclidean Voronoi diagram in 2D" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Euclidean Voronoi diagram in 2D">Euclidean</span>
+            </td>
+            <td style="text-align:center;">
+              <img src="images/2d_karlsruhe.png" alt="Karlsruhe Voronoi diagram in 2D" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Karlsruhe Voronoi diagram in 2D">Karlsruhe</span>
+            </td>
+            <td style="text-align:center;">
+              <img src="images/2d_diff.png" alt="Overlap/Difference between Euclidean and Karlsruhe Voronoi diagrams" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Overlap/Difference between Euclidean and Karlsruhe Voronoi diagrams in 2D">Difference</span>
+            </td>
+          </tr>
+        </table>
+      <br>
+      Source code of the 2D shader: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D/blob/main/Assets/Shader/2D%20on%20Circle.shader">2D on Circle.shader</a>
+     
+     
+      <h3>Ray Marching the Bisector Surface</h3>
+      Another idea to explore the metric is to start with just two points. In the Euclidean metric this means a straight line (2D) or a plane (3D) as the bisector.
+      The bisector in 3D with the Karlsruhe metric is a more complex surface.
+      Instead of calculating the bisector surface analytically, ray marching is used to approximate the surface in the fragment shader.
+      Ray marching is a technique where for each pixel a ray is cast into the scene.
+      It is conceptually similar to ray tracing, but instead of calculating exact intersections of the ray with geometry, we march along the ray in small steps to find an implicitly defined surface.
+      <br>
+      <img src="images/ray_marching_0.png" alt="Marching in steps along a ray" style="width:600px" class="zoomable" />
+      <span class="caption" style="margin-left:200px">Ray marching in a sphere</span>
+      <br>
+      <br>
+      In our case the bisector surface is defined as the set of points that are equidistant to both points 
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><msubsup><mi>P</mi><mn>1</mn><mrow/></msubsup></math>
+      and 
+      <math xmlns="http://www.w3.org/1998/Math/MathML"><msubsup><mi>P</mi><mn>2</mn><mrow/></msubsup></math>
+      according to the Karlsruhe metric.
+
+      <br>
+      <br>
+      The bisector surface is defined by the set of points X with
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+        <mi>X</mi><mo>|</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mo>(</mo><msubsup><mi>P</mi><mn>1</mn><mrow/></msubsup><mo>,</mo><mi>X</mi><mo>)</mo><mo>=</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mrow><mo>(</mo><mrow><msubsup><mi>P</mi><mn>2</mn><mrow/></msubsup><mo>,</mo><mi>X</mi></mrow><mo>)</mo></mrow>
+      </math>
+      <br>
+      This can be interpreted as a root finding problem where we want to find the points where the difference of the distances to both points is zero:
+      <br>
+      <math xmlns="http://www.w3.org/1998/Math/MathML">
+      <mi>F</mi><mo>(</mo><mi>X</mi><mo>)</mo><mo>=</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mrow><mo>(</mo><mrow><msubsup><mi>P</mi><mn>1</mn><mrow/></msubsup><mo>,</mo><mi>X</mi></mrow><mo>)</mo></mrow><mo>-</mo><mi>d</mi><mi>i</mi><mi>s</mi><mi>t</mi><mrow><mo>(</mo><mrow><msubsup><mi>P</mi><mn>2</mn><mrow/></msubsup><mo>,</mo><mi>X</mi></mrow><mo>)</mo></mrow><mo>=</mo><mn>0</mn></math>
+      </math>
+      <br>
+      <br>
+      We march along the ray in small steps and evaluate the function F at each step.
+      When the sign of the function changes between two steps, we know that the root must be in the last step:
+      <br>
+      <img src="images/ray_marching_1.png" alt="Marching in steps along a ray" style="width:600px" />
+      <span class="caption" style="margin-left: 50px;">Root finding with ray marching by detecting a sign change</span>
+      <br>
+      We can now further improve the accuracy by using a numerical root finding algorithm, for example <a href="https://en.wikipedia.org/wiki/Root-finding_algorithm#Secant_method">linear interpolation (Secant method)</a> or <a href="https://en.wikipedia.org/wiki/Newton%27s_method">Newton's method</a>.
+      For this visualization, a single linear interpolation step was sufficient to achieve adequate accuracy.
+      <br>
+      The following animation shows the resulting bisector surface between two points.
+      <br>
+      <img src="images/bisector.gif" alt="Animation of the bisector surface between two points" class="zoomable" />
+      <span class="caption">The bisector surface between two points in red. The sphere can be shown or hidden.</span>
+      <br>
+      <br>
+      In the program this shader can be selected in the menu as "Bisector Surface".
+      <br>
+      Source code of this shader: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D/blob/main/Assets/Shader/Bisector%20Surface.shader">Bisector Surface.shader</a>
+
+      <br>
+      <br>
+      The ray marching approach can be extended to more than two points to visualize the boundary of a single Voronoi cell.
+      However, this becomes computationally expensive because for each step along the ray, the distance to all points needs to be calculated.
+      For a small number of points (~10) this still allows interactive exploration of the Voronoi region. The more points there are, the lower the frame rate becomes and the interactivity is lost.
+      <br>
+      <br>
+      In the program this shader can be selected in the menu as "Single Cell Boundary".
+      <br>
+      Source code of this shader: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D/blob/main/Assets/Shader/Single%20Cell%20Boundary.shader">Single Cell Boundary.shader</a>
+
+    </p>
+
+    <h2>Properties of the Karlsruhe Metric</h2>
+    <p>
+      Some of the properties of the Karlsruhe metric that differ from the Euclidean metric, can be observed in the Voronoi diagrams and bisectors:
+      <h3>Translation Invariance</h3>
+      Unlike the Euclidean metric, the Karlsruhe metric is not translation invariant. This means if we move two points by the same vector, the distance between them can change.
+      The Karlsruhe distance depends on the position of the points with respect to the origin.
+      <br>
+      This can be visualized by moving all points in the scene by the same vector, in the program this can be done by holding the SHIFT key while dragging one point with the mouse.
+      <br>
+      <br>
+      <h3>Degenerate Bisectors</h3>
+      In the Euclidean metric, the bisector between two points is always a straight line (2D) or a plane (3D).
+      In the Karlsruhe metric, the bisector in 2D is usually a piecewise curve consisting of circular arcs and line segments, in 3D it is a piecewise surface of flat patches and conical patches.
+      However, there are degenerate cases where the bisector becomes more complex. This happens when two points have the same distance from the origin:
+      <br>
+
+      <div class="math">
+        The Karlsruhe distance is defined as
+        $$
+        d_k\left(P_j,X\right) = \left\{\begin{array}{cc} min(r_j,r_x) \cdot \delta (P_j,X) + \left|r_j - r_x\right|,\delta (P_j,X) \leq 2 \\ r_j + r_x \\ \end{array}\right.
+        $$
+        <br>
+        We can calculate the bisector in 2D for two points
+        <math xmlns="http://www.w3.org/1998/Math/MathML"><msubsup><mi>P</mi><mn>1</mn><mrow/></msubsup></math>
+        and 
+        <math xmlns="http://www.w3.org/1998/Math/MathML"><msubsup><mi>P</mi><mn>2</mn><mrow/></msubsup></math> by finding the set of points X where the distances to both points are equal:
+        <br>
+        $$
+        d_k (P_1,𝑋) = d_k (P_2,𝑋)
+        $$
+        We look at the first case and set the distances equal to each other to find the bisector:
+        <br><br>
+        $$
+        min(r_1,r_𝑥 )⋅𝛿(P_1,𝑋)+|r_1−r_𝑥 |= min(r_2,r_𝑥)⋅𝛿(P_2,𝑋) + |r_2−r_𝑥 |
+        $$
+        <br>
+        With the same radius $$r_1=r_2=𝑟$$ for both points, it changes to
+        <br>
+        $$
+        min(𝑟,r_𝑥 )⋅𝛿(P_1,𝑋)+|𝑟−r_𝑥 |=min(𝑟,r_𝑥)⋅𝛿(P_2,𝑋)+|𝑟−r_𝑥 |
+        $$
+        <br>
+        which is
+        $$𝛿(P_1,𝑋)=𝛿(P_2,𝑋)$$
+        <br>
+        The points X that satisfy this equation form the bisector, they are independent of the radius and only depend on the angle 𝛿. The bisector is no longer "thin" but a region.
+        <br>
+        In 2D, the degenerate bisector looks like a pizza slice with the tip at the origin (the visualization cannot show that it is extending to infinity in the other direction).
+        In 3D, the bisector looks like a cone with the tip at the origin.
+        <br>
+        <br>
+        <table>
+          <tr>
+            <td style="text-align:center;">
+              <img src="images/bisector_2d.png" alt="Degenerate bisector in 2D" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Degenerate bisector in 2D">In 2D</span>
+            </td>
+            <td style="text-align:center;">
+              <img src="images/bisector_surface.png" alt="Degenerate bisector in 3D" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Degenerate bisector on sphere surface">On sphere surface</span>
+            </td>
+            <td style="text-align:center;">
+              <img src="images/bisector_3D.png" alt="Degenerate bisector in 3D" class="img-captioned zoomable" style="height:200px;" />
+              <span class="caption" title="Degenerate bisector in 3D">In 3D</span>
+            </td>
+          </tr>
+        </table>
+        <br>
+        In the visualizations, the degenerate bisectors cause problems.
+        For example, the idea of the ray marching algorithm is to find the single root by looking for a sign change.
+        If the bisector is not a thin surface but a volumetric region, the function is zero over an interval instead of at a single value.
+        This breaks the assumption of the ray marching algorithm and leads to artifacts in the visualization.
+      </div>
+
+      <br>
+
+      <h3>Unit Circle/Sphere</h3>
+
+      The unit circle in 2D or unit sphere in 3D centered at the origin is the same in the Karlsruhe and Euclidean metric.
+      However, if the center is moved away from the origin, the shape becomes distorted as it is no longer a circle:
+      <br><br>
+
+      <img
+        id="unitslideshow"
+        src="images/unit0.png"
+        style="height:20em;cursor:pointer;"
+        alt="Unit circle in Karlsruhe metric"
+      />
+
+      <h3>m-Starshapedness</h3>
+
+      The Voronoi cells in the Karlsruhe metric are neither convex in the euclidean sense, nor under the Karlsruhe metric.
+      However, they are m-starshaped regarding the Karlsruhe metric.
+      This means that for the point that defines the Voronoi cell, all points in the Voronoi cell can be reached from that point by a path that is entirely contained within the Voronoi cell.
+      The path is not the euclidean straight line, but the path is defined according to the metric.
+      Notably this is only true from the point that defines the Voronoi cell, but not necessarily for other pairs of points inside the Voronoi cell, as can be seen in the following figure:
+      <br><br>
+      <img src="images/not_convex.png" alt="Karlsruhe path leaving Voronoi cell" style="height:20em;" />
+      <span class="caption">Voronoi cells are not convex under the Karlsruhe metric,<br>the shortest path between a pair of points can leave the Voronoi cell.</span>
+      <br>
+      Dehne and Klein show this property in <a href="https://link.springer.com/article/10.1007/BF02523236">The big sweep: On the power of the wavefront approach to Voronoi diagrams.</a>
+      They propose to use Fortune's sweepline algorithm for constructing Voronoi diagrams in non-Euclidean metrics. One of the requirements for their algorithm is the m-starshapedness property of the Voronoi cells.
+
+
+    </p>
+
+
+
+
+
+    <h2>Discussion</h2>
+    <p>
+
+      Using fragment shaders to visualize Voronoi diagrams in 3D with the Karlsruhe metric allows interactive exploration of the properties of the metric and its Voronoi diagrams.
+      The points can be moved interactively, parameters can be adjusted and the visualization offers feedback in real time.
+      The main limitation of this approach is the number of points that can be visualized interactively.
+      In the ray marching visualization, there is also an approximation error due to the step size and numerical root finding.
+      The number of steps along the ray needs to be adjusted to the screen resolution to achieve sub-pixel accuracy.
+      <br><br>
+      A sphere was used as the 3D space for the visualization.
+      The sphere fits the Karlsruhe Metric well because the metric is defined with respect to the origin and uses arcs.
+      However the sphere can be less intuitive as a 3D space, because we are used to exploring 3D space with the boundary at the border of the screen.
+      This could make it harder to imagine that Voronoi cells can extend beyond the sphere into infinity.
+      <br><br>
+      The cross-section visualization is a useful way to explore the 3D Voronoi diagrams, but it has limitations.
+      To get a complete understanding of the 3D structure, multiple cross-sections need to be explored. Either by moving a cross-section through the sphere or by using multiple cross-sections at the same time.
+      Two perpendicular cross-sections can give a better idea of the 3D structure. More cross-sections could be added, but this quickly becomes visually cluttered and hard to interpret. 
+      The biggest problem is that the cross-sections need to be semi-transparent to see multiple cross-sections and the points at the same time.
+      Two transparent objects (two cross-sections or one cross-section and a semi-transparent sphere surface) can be visually separated, but with more than two, it becomes hard to distinguish the different layers.
+      <br><br>
+      Overall, the project demonstrates that fragment-shader-based approaches are a powerful tool for exploring Voronoi diagrams in 3D.
+      For demonstrating the differences between the Karlsruhe metric and the Euclidean metric, the 2D visualizations are more effective than the 3D visualizations.
+      The 3D visualizations are best suited for interactive exploration and not for static illustrations.
+
+    </p>
+
+
+    <h2>Future Work</h2>
+    <p>
+    Instead of focusing solely on the Karlsruhe metric and the Euclidean metric, other distance metrics could be explored in 3D using the same visualizations.
+
+    <br><br>
+    Additional techniques for visualizing three-dimensional Voronoi diagrams could be implemented.
+    One direction could be volume rendering of Voronoi cells. This could solve issues with degenerated bisectors, that aren't thin surfaces but volumetric.
+    An example of volume rendering of Voronoi diagrams is described by Nielsen in <a href="https://www.lix.polytechnique.fr/~nielsen/GPUQuantumVoronoiDiagrams-draft.pdf">A Volume shader for quantum Voronoi diagrams inside the 3D Bloch ball</a>.
+
+    <br><br>
+    Algorithmic approaches could also be investigated further. Fortune's algorithm, also known as the wavefront algorithm, could be implemented, as described by Dehne and Klein in
+    <a href="https://link.springer.com/article/10.1007/BF02523236">The big sweep: On the power of the wavefront approach to Voronoi diagrams</a>. A visualization of the wavefront propagation under the Karlsruhe metric could offer more insight into the structure of the Voronoi diagrams.
+
+    <br><br>
+    Finally, potential applications of the Karlsruhe metric could be explored.
+
+    </p>
+
+
+    <h2 id="links">Links</h2>
+    <p>
+      <ul>
+        <li>Demo: <a href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/">https://samuelessig.github.io/Karlsruhe-Metric-in-3D/</a></li>
+        <li>Source code: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D">https://github.com/samuelessig/Karlsruhe-Metric-in-3D</a></li>
+        <li>Demo for the sphere surface program: <a href="https://samuelessig.github.io/Spherical-Karlsruhe-Metric/">https://samuelessig.github.io/Spherical-Karlsruhe-Metric/</a></li>
+        <li>Source code of the sphere surface program: <a href="https://github.com/samuelessig/Spherical-Karlsruhe-Metric">https://github.com/samuelessig/Spherical-Karlsruhe-Metric</a></li>
+        <li>Presentation slides: <a href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/slides.pptx">pptx</a>/<a href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/slides.pdf">pdf</a></li>
+        <li>Email contact: vorname.nachname@stud.uni-heidelberg.de or vorname.nachname@gmx.net</li>
+        <li>Earlier software practical by Sebastian Zins: <a href="https://pille.iwr.uni-heidelberg.de/~voronoi01/">https://pille.iwr.uni-heidelberg.de/~voronoi01/</a></li>
+      </ul>
+
+    </p>
+
+    
+    <h2>References</h2>
+    <p>
+       <ul>
+        <li><a href="https://d-nb.info/1148748288/34">Aurenhammer, F., Klein, R., & Lee, D. T. (2013). Voronoi Diagrams and Delaunay Triangulations. World Scientific.</a></li>
+
+        <li>Proof of m-starshapedness: <a href="https://link.springer.com/chapter/10.1007/978-3-658-37711-3_7">Klein, R. (2005). Algorithmische Geometrie (p. 359). Springer Berlin Heidelberg.</a></li>
+
+        <li>Ray Marching: <a href="https://cg.ivd.kit.edu/downloads/IntModelingSDF.pdf">Reiner, T., Mückl, G., & Dachsbacher, C. (2011). Interactive modeling of implicit surfaces using a direct visualization approach with signed distance functions. Computers & Graphics, 35(3), 596–603</a></li>
+
+        <li>Ray Marching: <a href="https://cdn.iiit.ac.in/cdn/cvit.iiit.ac.in/papers/singhImplicitTVCG.pdf">Singh, J. M., & Narayanan, P. J. (2010). Real-Time Ray Tracing of Implicit Surfaces on the GPU. IEEE Transactions on Visualization and Computer Graphics, 16(2), 261–272.</a></li>
+
+        <li>A ray marching shader with shading: <a href="https://www.cs.williams.edu/~morgan/cs371-f14/reading/implicit.pdf">McGuire, M. (2014). Numerical Methods for Ray Tracing Implicitly Defined Surfaces.</a></li>
+
+        <li>Example of volume rendering Voronoi diagrams: <a href="https://www.lix.polytechnique.fr/~nielsen/GPUQuantumVoronoiDiagrams-draft.pdf">Nielsen, F. (2008). A Volume shader for quantum Voronoi diagrams inside the 3D Bloch ball. In ShaderX7 (pp. 225–228). Charles River Media/Thomson Publishing.</a></li>
+      </ul>
+    </p>
+
+
+  </div>
+ 
+</body>
+</html>
