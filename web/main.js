@@ -65,7 +65,10 @@ function makeImagesZoomable () {
     currentIndex = (index + imgs.length) % imgs.length
     const img = imgs[currentIndex]
 
-    const fullSrc = img.currentSrc || img.src
+    let fullSrc = img.currentSrc || img.src
+    if ('fullsrc' in img.dataset) {
+      fullSrc = img.dataset.fullsrc
+    }
     imgEl.src = fullSrc
     imgEl.alt = img.alt || ''
 
