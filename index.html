@@ -3,11 +3,90 @@
   <head>
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-    <title>Unity Web Player | Karlsruhe Metric in 3D</title>
+    <meta
+      name="description"
+      content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+    />
+    <meta name="author" content="Samuel Essig" />
+    <title>Karlsruhe Metric in 3D | Unity Web Player</title>
     <link rel="shortcut icon" href="TemplateData/favicon.ico">
     <link rel="stylesheet" href="TemplateData/style.css">
+
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Karlsruhe Metric in 3D" />
+    <meta property="og:title" content="Voronoi Diagrams in 3D with the Karlsruhe Metric" />
+    <meta
+      property="og:description"
+      content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+    />
+    <meta property="og:url" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/" />
+    <meta property="og:image" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/open-graph.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="640" />
+    <meta property="og:image:alt" content="Voronoi diagrams in 3D using the Karlsruhe metric" />
+    <meta property="og:locale" content="en_US" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Voronoi Diagrams in 3D with the Karlsruhe Metric" />
+    <meta
+      name="twitter:description"
+      content="Interactive GPU-based visualization of Voronoi diagrams in 2D and 3D using the Karlsruhe (Moscow) metric. Visualization of the Karlsruhe path, onion layers, cross-sections, and ray marching to show bisector surfaces."
+    />
+    <meta name="twitter:image" content="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/open-graph.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/favicon-16x16.png">
+    <link rel="manifest" href="https://samuelessig.github.io/Karlsruhe-Metric-in-3D/web/site.webmanifest">
+    <style>
+      body {
+        background: rgba(0,0,0,0.55);
+      }
+
+      #textcontainer {
+        display:block;
+        position:absolute;
+        top:15px;
+        left:3px;
+        font-family:sans-serif;
+        max-width: 320px;
+        background: #bfbfbf;
+        padding: 10px;border-radius:5px;
+      }
+
+      /* small screen */
+      @media (max-width: 1892px) {
+        #textcontainer {
+          top: 900px;
+          max-width: calc(100% - 30px);
+        }
+      }
+      @media (max-width: 899px) {
+        #textcontainer {
+          top: 900px;
+          max-width: calc(100% - 30px);
+        }
+      }
+
+      </style>
   </head>
-  <body>
+  <body">
+    <div id="textcontainer">
+      <h2 style="font-size:16px; margin-bottom:0.2em">WebGL Demo</h2>
+      <h1 style="font-size:18px; margin-bottom:0.2em">Voronoi Diagrams in 3D</h1>
+      <h2 style="font-size:16px; margin-bottom:0.2em">Karlsruhe Metric</h2>
+      <br>
+      This demo is the <a href="https://en.wikipedia.org/wiki/WebGL">WebGL</a> build of the <a href="https://unity.com/">Unity</a> project.
+      It runs directly in your web browser, but it has some limitations compared to running the project in the <a href="https://unity.com/download">Unity Editor</a> or a Windows build.
+      <br>
+      Apart from the performance, the main limitation is that shaders in the WebGL build cannot use dynamic loops and variable size arrays. The maximum number of points must be known at compile time. This build is limited to <em>64 points</em>, which is enough to show-case the shaders and it still runs smoothly in the web browser. Some of the example scenes require more points and will not load correctly though.
+      <br>
+      <br>
+      If you want to run the demo with more points or explore the source code, please check out the GitHub repository: <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D">https://github.com/samuelessig/Karlsruhe-Metric-in-3D</a>
+      <br>You can download a Windows build in the "Releases" section of the GitHub repository, or you can run load the project in the Unity Editor.
+      <br>
+      <br>
+      Project page: <a href="https://pille.iwr.uni-heidelberg.de/~voronoi02">https://pille.iwr.uni-heidelberg.de/~voronoi02</a>
+    </div> 
+
     <div id="unity-container" class="unity-desktop">
       <canvas id="unity-canvas" width=1200 height=900 tabindex="-1"></canvas>
       <div id="unity-loading-bar">
@@ -23,6 +102,7 @@
         <div id="unity-build-title">Karlsruhe Metric in 3D</div>
       </div>
     </div>
+
     <script>
       var canvas = document.querySelector("#unity-canvas");
 
@@ -129,10 +209,5 @@
       document.body.appendChild(script);
 
     </script>
-    <div style="display:block; position:absolute; bottom:3px; left:3px; font-family:sans-serif">
-      <a href="https://github.com/samuelessig/Karlsruhe-Metric-in-3D">https://github.com/samuelessig/Karlsruhe-Metric-in-3D</a>
-      <br>
-      <a href="https://pille.iwr.uni-heidelberg.de/~voronoi02">https://pille.iwr.uni-heidelberg.de/~voronoi02</a>
-    </div> 
   </body>
 </html>
